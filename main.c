@@ -10,6 +10,7 @@
 // Final Project
 // Rodrigo Barbieri, Rafael Machado and Guilherme Baldo
 
+
 #ifdef _WIN32
 double log2(double n){ //windows' math.h does not have log2 function  
     return log(n) / log(2);  
@@ -17,7 +18,7 @@ double log2(double n){ //windows' math.h does not have log2 function
 #endif
 
 typedef struct ProgramInfo { //Structure responsible for maintaining program information and state
-	int n; //number of elements for a specific test case
+	long n; //number of elements for a specific test case
 	int p; //number of threads selected by the user
 	char print; //whether the user chose to print the sorted array
 } ProgramInfo;
@@ -235,14 +236,32 @@ FILE* validation(int* argc, char* argv[]){ //validates several conditions before
 		exit(0);
 	}
 	return f;
+
 }
+
+void calculateLocalArray(long* local_n,long* my_first_i,int* rank){ //calculates local number of elements and starting index for a specific rank based on total number of elements
+	long div = p_info->n / p_info->p;
+	long r = p_info->n % p_info->p; //divides evenly between all threads, firstmost threads get more elements if remainder is more than zero
+	if (*rank < r){
+		*local_n = div + 1;
+		if (my_first_i != NULL) //allows my_first_i parameter to be NULL instead of an address
+			*my_first_i = *rank * *local_n;
+	} else {
+		*local_n = div;
+		if (my_first_i != NULL) //allows my_first_i parameter to be NULL instead of an address
+			*my_first_i = *rank * *local_n + r;
+	}
+}
+
+void 
 
 int main(int argc, char *argv[]){
 
 	FILE *f = NULL;
 	char filename[50];
 	char print = 'Y';
-	int n,rank,p,local_n,t;
+	int rank,p,t;
+	long local_n,my_first_i,n;
 	int *array = NULL;
 	int *aux;
 	int *result;
@@ -264,17 +283,28 @@ int main(int argc, char *argv[]){
 
 	BMP_HEADER header;
 	initialize_header(&header);
-	f = validation(&argc,argv);
-	if (f != NULL){
-//		fread(&header,sizeof(BMP_HEADER),1,f);
-		read_header(&header,f);
-		print_header(&header);
-		fclose(f);
 
-
-
+	if (rank == 0){
+		f = validation(&argc,argv);
+		if (f != NULL){
+			read_header(&header,f);
+			print_header(&header);
+			fclose(f);
+		}
 	}
 
+	MPI_Bcast(&(header.height),1,MPI_LONG,0,MPI_COMM_WORLD);	
+
+	p_info->n = header.height;
+
+	calculateLocalArray(&local_n,&my_first_i,&rank);
+
+	printf("rank: %d, my_first_i: %ld, local_n: %ld\n",rank,my_first_i,local_n);	
+
+	
+
+
+/*
 	if (rank == 0){
 
 		array = initialize(&n,&p,&t,f,&rank); //every process gets t and n, process 0 reads input
@@ -313,7 +343,7 @@ int main(int argc, char *argv[]){
 	} else {
 		if (rank == 0)
 			printf("Number of processes is not power of two!\n");
-	
+	*/
 	MPI_Finalize();
 	return 0;
 }
