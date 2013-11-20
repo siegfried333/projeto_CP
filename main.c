@@ -237,6 +237,42 @@ FILE* validation(int* argc, char* argv[]){ //validates several conditions before
 	return f;
 }
 
+
+int encode (char *message, int size, int width, int height, char *output){
+	int i = 0,j = 0;
+	int count = 1;
+	int outputIndex = 0;
+	
+	int countBytesPerLine = 0;
+	int bytesPerLine = width*3;
+	int bytesPadding = width%4;
+		
+	while (j < height) {
+		while (countBytesPerLine < bytesPerLine){
+
+			if (message[i] == message[i+3] && message[i+1] == message[i+4] && message[i+2] == message[i+5] && count < 255) {
+				count++;
+			}
+			else {
+				output[outputIndex] = (char) count & 0xFF;
+				output[++outputIndex] = message[i];
+				output[++outputIndex] = message[i+1];
+				output[++outputIndex] = message[i+2];
+				outputIndex++;
+				count = 1;
+			}
+			countBytesPerLine += 3;
+			i += 3;
+		}
+		countBytesPerLine = 0;
+		j++;
+		i += bytesPadding;
+	}
+	
+	return outputIndex;
+	
+}
+
 int main(int argc, char *argv[]){
 
 	FILE *f = NULL;
